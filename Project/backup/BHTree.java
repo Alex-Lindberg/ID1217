@@ -1,4 +1,7 @@
-package task4;
+package backup;
+
+import task4.Body; /* remove these */
+import task4.Quad; /* remove these */
 
 public class BHTree {
 

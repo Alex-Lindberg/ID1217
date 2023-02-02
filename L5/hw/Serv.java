@@ -11,8 +11,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
         
 public class Serv implements Hello {
-        
-    // public Serv() {}
 
     public String sayHello() {
         return "Hello, world!";
