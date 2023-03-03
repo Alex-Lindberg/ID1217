@@ -50,7 +50,7 @@ public class Philosopher implements Runnable {
 
     private void eat() {
         try {
-            System.out.format("P-[%d]: \tEating%n", philosopherId);
+            System.out.format("P-[%d]: \tEating, hunger: %d%n", philosopherId, this.hunger - 1);
             this.hunger--;
             Thread.sleep((long) (Math.random() * 1000));
         } catch (InterruptedException e) {

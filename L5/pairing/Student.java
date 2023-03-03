@@ -25,7 +25,6 @@ public class Student implements Runnable {
                 partnerName = teacher.receivePartner(name);
                 Thread.sleep(50);
             }
-
             System.out.format("%s \t: my partner is %s!%n", name, partnerName);
         } catch (RemoteException | NotBoundException e) {
             System.err.println("Error: " + e.getMessage());

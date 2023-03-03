@@ -44,18 +44,14 @@ public class Teacher implements PairingService {
     public synchronized String receivePartner(String studentName) throws RemoteException {
         for (String[] pair : studentPairs) {
             if (pair[0].equals(studentName)) {
-                numStudents--;
-                
                 return pair[1];
             }
             if (pair[1].equals(studentName)) {
-                numStudents--;
                 return pair[0];
             }
-        }        
+        }
         return "";
     }
-
 
     public static void main(String[] args) {
         int numStudents = args.length > 0 ? Integer.parseInt(args[0]) : 9;
