@@ -29,8 +29,6 @@ import java.util.concurrent.CyclicBarrier;
 
 public class Nbody {
 
-    public static final int MAX_BODIES = 240;
-    public static final int MAX_STEPS = 100000;
     public static final Double EARTH_MASS = 59.742;
     public static final double RADIUS = 150;
     public static final double MIN_DIST = 80;
@@ -90,6 +88,9 @@ public class Nbody {
     }
 
     public static void main(String[] args) {
+
+        final int MAX_BODIES = 240;
+        final int MAX_STEPS = 400000;
 
         long startTime, endTime;
         int gnumBodies, numSteps;

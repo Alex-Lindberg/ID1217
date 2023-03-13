@@ -17,18 +17,19 @@
  * 400_000 steps roughly equates to 15 seconds execution time for 120 bodies
  * on my personal computer. (14887,8 ms median)
  * 
+ * Some liberty was taken to make the results look nice when displayed as a figure.
+ * 
  *  @author Alex Lindberg
  * 
  */
 package task1;
 
-import java.util.Random;
+import util.Util;
+import util.Util.*;
 
 public class Nbody {
 
     public static final double G = 6.67e-3;
-    public static final int MAX_BODIES = 240;
-    public static final int MAX_STEPS = 400000;
     public static final Double EARTH_MASS = 59.742;
     public static final double RADIUS = 150;
     public static final double MIN_DIST = 80;
@@ -41,11 +42,10 @@ public class Nbody {
     public final double massBody;
 
     // Data oriented variable storage
-    Point[] bodies; // x, y coords
-    Point[] vs; // x, y velocity
-    Point[] fs; // x, y Forces
+    Point[] p; // x, y coords
+    Point[] v; // x, y velocity
+    Point[] f; // x, y Forces
     double[] ms; // Mass
-    Random rGen;
 
     /**
      * Simulation of the nbody-problem
@@ -61,78 +61,62 @@ public class Nbody {
         this.numSteps = numSteps;
         this.massBody = massBody;
 
-        this.bodies = new Point[gnumBodies];
-        this.vs = new Point[gnumBodies];
-        this.fs = new Point[gnumBodies];
+        this.p = new Point[gnumBodies];
+        this.v = new Point[gnumBodies];
+        this.f = new Point[gnumBodies];
         this.ms = new double[gnumBodies];
-        this.rGen = new Random();
 
-        this.bodies[0] = new Point(0,0);
-        this.vs[0] = new Point(0,0);
-        this.fs[0] = new Point(0,0);
+        this.p[0] = new Point(0, 0);
+        this.v[0] = new Point(0, 0);
+        this.f[0] = new Point(0, 0);
         this.ms[0] = EARTH_MASS * 333.0;
 
         for (int i = 1; i < gnumBodies; i++) {
             // Random position
-            this.bodies[i] = getRandPos(this.bodies[0], RADIUS, MIN_DIST);
+            this.p[i] = Point.getRandPos(this.p[0], RADIUS, MIN_DIST);
             // Random velocity between [-velBound, velBound]
             // Velocity orthogonal to the direction vector from the sun to current body
-            double vx =  (this.bodies[0].x - this.bodies[i].x) * START_VEL;
-            double vy =  -(this.bodies[0].y - this.bodies[i].x) * START_VEL;
-            this.vs[i] = new Point(vx,vy);
-            this.fs[i] = new Point(0, 0);
+            double vx = (this.p[0].x - this.p[i].x) * START_VEL;
+            double vy = -(this.p[0].y - this.p[i].x) * START_VEL;
+            this.v[i] = new Point(vx, vy);
+            this.f[i] = new Point(0, 0);
             // Mass with some varaince
-            this.ms[i] = massBody * (1 + rand(-massVariance, massVariance));
+            this.ms[i] = massBody * (1 + randInterval(-massVariance, massVariance));
         }
     }
 
-    public double rand(double min, double max) {
-        return this.rGen.nextDouble() * (max - min) + min;
-    }
-
-    private Point getRandPos(Point center, double radius, double minDist) {
-        double r = radius * Math.sqrt(this.rGen.nextDouble()) + minDist; // distance
-        double theta = this.rGen.nextDouble() * 2 * Math.PI; // direction
-        double x = center.x + r * Math.cos(theta); // cartesian pos x
-        double y = center.y + r * Math.sin(theta); // cartesian pos y
-        return new Point(x,y);
-    }
-
     public void calculateForces() {
-        double distance, mag, dirX, dirY;
+        double distance, mag;
+        Point direction;
 
         for (int i = 0; i < gnumBodies; i++) {
             for (int j = i + 1; j < gnumBodies; j++) {
-                distance = dist(bodies[i], bodies[j]);
+                distance = dist(p[i], p[j]);
                 mag = (G * ms[i] * ms[j]) / (Math.pow(distance, 2) + SOFTENING);
-                dirX = bodies[j].x - bodies[i].x;
-                dirY = bodies[j].y - bodies[i].y;
-                fs[i].x += mag * dirX / distance;
-                fs[j].x -= mag * dirX / distance;
-                fs[i].y += mag * dirY / distance;
-                fs[j].y -= mag * dirY / distance;
+                direction = new Point(  p[j].x - p[i].x,
+                                        p[j].y - p[i].y);
+                f[i].x += mag * direction.x / distance;
+                f[j].x -= mag * direction.x / distance;
+                f[i].y += mag * direction.y / distance;
+                f[j].y -= mag * direction.y / distance;
             }
         }
     }
 
     public void moveBodies() {
-        double dx, dy;
-        double dvx, dvy;
-
+        Point deltaV, deltaP;
+        
         for (int i = 0; i < gnumBodies; i++) {
-            dvx = (fs[i].x / ms[i]) * DT;
-            dvy = (fs[i].y / ms[i]) * DT;
+            deltaV = new Point( (f[i].x / ms[i]) * DT, 
+                                (f[i].y / ms[i]) * DT);
+            deltaP = new Point( ((v[i].x + deltaV.x) / 2) * DT,
+                                ((v[i].y + deltaV.y) / 2) * DT);
 
-            dx = ((vs[i].x + dvx) / 2) * DT;
-            dy = ((vs[i].y + dvy) / 2) * DT;
-
-            vs[i].x += dvx;
-            vs[i].y += dvy;
-
-            bodies[i].x += dx;
-            bodies[i].y += dy;
-
-            fs[i].x = fs[i].y = 0.0;
+            v[i].x += deltaV.x;
+            v[i].y += deltaV.y;
+            p[i].x += deltaP.x;
+            p[i].y += deltaP.y;
+            f[i].x = f[i].y = 0.0;
         }
     }
 
@@ -141,20 +125,14 @@ public class Nbody {
         return Math.sqrt(Math.pow((p1.x - p2.x), 2) + Math.pow((p1.y - p2.y), 2));
     }
 
-    /**
-     * Sub-class for representation of a celestial body
-     */
-    private class Point {
-        public double x;
-        public double y;
-
-        public Point(double x, double y) {
-            this.x = x;
-            this.y = y;
-        }
+    public static double randInterval(double min, double max) {
+        return Math.random() * (max - min) + min;
     }
 
     public static void main(String[] args) {
+
+        final int MAX_BODIES = 240;
+        final int MAX_STEPS = 400000;
 
         int gnumBodies, numSteps;
         long startTime, endTime;
@@ -164,42 +142,32 @@ public class Nbody {
 
         gnumBodies = (args.length > 0) && (Integer.parseInt(args[0]) < MAX_BODIES) ? Integer.parseInt(args[0])
                 : MAX_BODIES;
-        numSteps = (args.length > 1) && (Integer.parseInt(args[1]) < MAX_STEPS) ? Integer.parseInt(args[1]) : MAX_STEPS;
+        numSteps = (args.length > 1) && (Integer.parseInt(args[1]) < MAX_STEPS) ? Integer.parseInt(args[1])
+                : MAX_STEPS;
         numResultsShown = (args.length > 2) ? Integer.parseInt(args[2]) : 5;
         massOfBodies = (args.length > 3) ? Integer.parseInt(args[3]) : EARTH_MASS;
         massVariance = (args.length > 4) ? Integer.parseInt(args[4]) : 0.1;
 
         Nbody prg = new Nbody(gnumBodies, numSteps, massOfBodies, massVariance);
 
-        // Printing starting conditions
         System.out.println("\n- Initial Conditions -\n");
-        System.out.println("Body  \t: x\ty\t| vx\tvy");
-        for (int i = 0; i < numResultsShown; i++) {
-            System.out.format("Body %d\t: %.0f\t%.0f\t| %.3f\t%.3f %n", i, prg.bodies[i].x, prg.bodies[i].y,
-                prg.vs[i].x,
-                prg.vs[i].y);
-        }
-        System.out.format("Total Body count : %d%n", prg.gnumBodies);
+        Util.printArrays(prg.p, prg.v, gnumBodies, numResultsShown);
 
-        System.out.println("\n- After simulation -\n");
         startTime = System.nanoTime();
-        // Start seq work
 
+        // Start seq work
         for (int i = 0; i < numSteps; i++) {
             prg.calculateForces();
             prg.moveBodies();
         }
-
         // Finished seq work
+
         endTime = System.nanoTime() - startTime;
 
-        // Printing end result
-        for (int i = 0; i < numResultsShown; i++) {
-            System.out.format("Body %d\t: %.0f\t%.0f\t| %.3f\t%.3f %n", i, prg.bodies[i].x, prg.bodies[i].y,
-                prg.vs[i].x,
-                prg.vs[i].y);
-        }
+        System.out.println("\n- After simulation -\n");
+        Util.printArrays(prg.p, prg.v, gnumBodies, numResultsShown);
 
-        System.out.format("%n- Simulation executed in %.1f ms -%n%n", endTime * Math.pow(10, -6));
+        System.out.format("%n- Simulation executed in %.1f ms -%n", endTime * Math.pow(10, -6));
+        System.out.println("---------------------------------");
     }
 }
