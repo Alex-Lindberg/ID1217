@@ -30,21 +30,6 @@ public class Util {
         }
     }
 
-    public static void printArrays(Body[] bodies, int gnumBodies, int numResultsShown) { 
-        Point[] p = Arrays.asList(bodies)
-            .stream()
-            .map(body -> new Point(body.p.x, body.p.y))
-            .collect(Collectors.toList())
-            .toArray(new Point[gnumBodies]);
-        Point[] v = Arrays.asList(bodies)
-            .stream()
-            .map(body -> new Point(body.v.x, body.v.y))
-            .collect(Collectors.toList())
-            .toArray(new Point[gnumBodies]);
-
-        printArrays(p, v, gnumBodies, numResultsShown);
-    }
-
     public static void printArrays(Point[] pPositions, Point[] pVelocities, int gnumBodies, int numResultsShown) {
         int results = Math.min(numResultsShown, gnumBodies);
 

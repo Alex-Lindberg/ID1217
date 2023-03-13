@@ -29,13 +29,16 @@ import util.Util.*;
 
 public class NBody {
 
+    public static final double DOWNSCALING = 0.01;
     public static final double G = 6.67e-3;
-    public static final Double EARTH_MASS = 59.742;
-    public static final double RADIUS = 150;
-    public static final double MIN_DIST = 80;
+    public static final double EARTH_MASS = 59.742 * DOWNSCALING;
+    public static final double SUN_MASS = EARTH_MASS * 3.3 * 1e6;
+    public static final double RADIUS = 10;
+    public static final double MIN_DIST = 5;
     public static final double SOFTENING = 1e5;
     public static final double DT = 0.1;
-    public static final double START_VEL = 0.0008;
+    public static final double START_VEL = 0.0001;
+    public static final double MASS_VARIANCE = 0.2;
 
     public final int gnumBodies;
     public final int numSteps;
@@ -69,7 +72,7 @@ public class NBody {
         this.p[0] = new Point(0, 0);
         this.v[0] = new Point(0, 0);
         this.f[0] = new Point(0, 0);
-        this.m[0] = EARTH_MASS * 333.0;
+        this.m[0] = SUN_MASS;
 
         for (int i = 1; i < gnumBodies; i++) {
             // Random position
@@ -77,7 +80,7 @@ public class NBody {
             // Random velocity between [-velBound, velBound]
             // Velocity orthogonal to the direction vector from the sun to current body
             double vx = (this.p[0].x - this.p[i].x) * START_VEL;
-            double vy = -(this.p[0].y - this.p[i].x) * START_VEL;
+            double vy = -(this.p[0].y - this.p[i].y) * START_VEL;
             this.v[i] = new Point(vx, vy);
             this.f[i] = new Point(0, 0);
             // Mass with some varaince
