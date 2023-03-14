@@ -32,13 +32,16 @@ import java.util.concurrent.CyclicBarrier;
 
 public class ParallelNBody {
 
-    public static final double G = 6.67e-3;
-    public static final Double EARTH_MASS = 59.742;
-    public static final double RADIUS = 150;
-    public static final double MIN_DIST = 80;
+    public static final double DOWNSCALING = 0.01;
+    public static final double G = 6.67e-2;
+    public static final double EARTH_MASS = 59.742 * DOWNSCALING;
+    public static final double SUN_MASS = EARTH_MASS * 3.3 * 1e6;
+    public static final double RADIUS = 10;
+    public static final double MIN_DIST = 5;
     public static final double SOFTENING = 1e5;
     public static final double DT = 0.1;
-    public static final double START_VEL = 0.0008;
+    public static final double START_VEL = 0.0001;
+    public static final double MASS_VARIANCE = 0.2;
 
     public final int gnumBodies;
     public final double massBody;
@@ -46,6 +49,7 @@ public class ParallelNBody {
     
     public int currentStep = 0;
     private CyclicBarrier barrier;
+    private CyclicBarrier barrier2;
     private Worker[] workers;
     private final int PR;
 
@@ -76,7 +80,8 @@ public class ParallelNBody {
         this.m = new double[gnumBodies];
 
         // Barrier, action increments step counter
-        barrier = new CyclicBarrier(numWorkers, () -> { currentStep++; });
+        barrier = new CyclicBarrier(numWorkers);
+        barrier2 = new CyclicBarrier(numWorkers, () -> { currentStep++; });
         // Prepare parallel workers
         workers = new Worker[numWorkers];
         for (int i = 0; i < numWorkers; i++)
@@ -92,7 +97,7 @@ public class ParallelNBody {
             // Random velocity between [-velBound, velBound]
             // Velocity orthogonal to the direction vector from the sun to current body
             double vx = (this.p[0].x - this.p[i].x) * START_VEL;
-            double vy = -(this.p[0].y - this.p[i].x) * START_VEL;
+            double vy = -(this.p[0].y - this.p[i].y) * START_VEL;
             this.v[i] = new Point(vx, vy);
             // Mass with some varaince
             this.m[i] = massBody * (1 + randInterval(-massVariance, massVariance));
@@ -109,7 +114,7 @@ public class ParallelNBody {
         for (int i = w; i < gnumBodies; i += PR) {
             for (int j = i + 1; j < gnumBodies; j++) {
                 distance = dist(p[i], p[j]);
-                magnitude = (G * m[i] * m[j]) / (Math.pow(distance, 2) );//+ SOFTENING);
+                magnitude = (G * m[i] * m[j]) / ((Math.pow(distance, 2) * SOFTENING));
                 direction = new Point(  p[j].x - p[i].x,
                                         p[j].y - p[i].y);
                 f[w][i].x += magnitude * direction.x / distance;
@@ -159,25 +164,25 @@ public class ParallelNBody {
         public Worker(int id) {
             this.id = id;
         }
-        public void barrier() {
-            try {  
-                barrier.await(); 
-                // The main thread increments the counter so we need only wait to finish
-                if( currentStep >= numSteps)
-                    this.finished = true;
-            } catch (InterruptedException | BrokenBarrierException e) {
-                System.err.format("Error: Exception caught for worker %d%n", this.id);
-                e.printStackTrace();
-                Thread.currentThread().interrupt();
-            }
+        public void exitBarrier() throws Exception {
+            barrier2.await(); 
+            // The main thread increments the counter so we need only wait to finish
+            if( currentStep >= numSteps)
+                this.finished = true;
         }
         @Override
         public void run() {
-            while(!finished) {
-                calculateForces(this.id);
-                this.barrier();
-                moveBodies(this.id);
-                this.barrier();
+            try {  
+                while(!finished) {
+                    calculateForces(this.id);
+                    barrier.await();
+                    moveBodies(this.id);
+                    this.exitBarrier();
+                }
+            } catch (Exception e) {
+                System.err.format("Error: Exception caught for worker %d%n", this.id);
+                e.printStackTrace();
+                Thread.currentThread().interrupt();
             }
         }
     }
@@ -185,7 +190,7 @@ public class ParallelNBody {
     public static void main(String[] args) throws InterruptedException {
 
         final int MAX_BODIES = 240;
-        final int MAX_STEPS = 400000;
+        final int MAX_STEPS = 350000;
         final int MAX_WORKERS = 4;
 
         int gnumBodies, numSteps, numWorkers;
@@ -230,5 +235,6 @@ public class ParallelNBody {
 
         System.out.format("%n- Simulation executed in %.1f ms -%n", endTime * Math.pow(10, -6));
         System.out.println("---------------------------------");
+        System.out.format("%d  & %.1f \\\\ %n", gnumBodies, endTime * Math.pow(10, -9));
     }
 }
