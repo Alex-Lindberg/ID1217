@@ -25,15 +25,6 @@ public class Body {
         this.ay += y;
     }
 
-    public Body aggregateBodies(Body that) {
-
-        double dx = (this.x * this.mass + that.x * that.mass) / (this.mass + that.mass);
-        double dy = (this.y * this.mass + that.y * that.mass) / (this.mass + that.mass);
-        double aggregateMass = this.mass + that.mass;
-
-        return new Body(dx, dy, 0.0, 0.0, aggregateMass, DT);
-    }
-
     public void move() {
 
         // Leap frog scheme

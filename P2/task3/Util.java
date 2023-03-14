@@ -11,17 +11,17 @@ public class Util {
 
         Formatter fmt = new Formatter();
 
-        fmt.format("p %3s %10s %10s %10s %10s\n", "i", "px", "py", "vx", "vy");
-        fmt.format("-------------------------------------------------\n");
+        fmt.format("p %3s %10s %10s %12s %12s\n", "i", "px", "py", "vx", "vy");
+        fmt.format("-----------------------------------------------------\n");
         for (int i = 0; i < results; i++) {
-            fmt.format("p %3s %10s %10s %10s %10s\n",
+            fmt.format("p %3s %10s %10s %12s %12s\n",
                     i,
                     round(bodies[i].x, 2),
                     round(bodies[i].y, 2),
-                    round(bodies[i].vx, 2),
-                    round(bodies[i].vy, 2));
+                    round(bodies[i].vx, 7),
+                    round(bodies[i].vy, 7));
         }
-        fmt.format("-------------------------------------------------\n");
+        fmt.format("-----------------------------------------------------\n");
         fmt.format("Total Body count : %d\n", gnumBodies);
         System.out.println(fmt);
         

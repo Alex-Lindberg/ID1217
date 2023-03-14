@@ -16,7 +16,7 @@ public final class Constants {
     public static final double START_VEL = 0.0001;
     public static final double MASS_VARIANCE = 0.2;
 
-    public static final double theta = 0.5;
+    public static final double theta = 1.5;
 
     public static final int POS_SCALING = 400;
     public static final int MASS_SCALING = 5;

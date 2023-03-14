@@ -1,11 +1,11 @@
 package task3;
 
 public class BarnesHutTree {
-    
+
     public final double G = Constants.G;
     public final double SOFTENING = Constants.SOFTENING;
     public final double theta;
-    
+
     public Body body;
     public double centerX, centerY; // center of mass
     public double width, radius;
@@ -19,17 +19,14 @@ public class BarnesHutTree {
         this.centerX = centerX;
         this.centerY = centerY;
         this.width = width;
-        this.theta = theta;    
+        this.theta = theta;
         this.radius = width / 2.0;
-        this.totalMass = 0;
-        this.totalCenterOfMassX = 0;
-        this.totalCenterOfMassY = 0;
     }
 
     public void insert(Body newBody) {
 
-        // Insert new leaf node
-        if (this.body == null) {
+        // New leaf node
+        if (this.body == null && isExternal()) {
             this.body = newBody;
             return;
         }
@@ -52,53 +49,49 @@ public class BarnesHutTree {
             totalCenterOfMassY += newBody.mass * newBody.y;
 
             // Insert the body into the appropriate quadrant
-            if (NE.contains(newBody)) {
-                NE.insert(newBody);
-            } 
-            else if (SE.contains(newBody)) {
-                SE.insert(newBody);
-            }
-            else if (NW.contains(newBody)) {
-                NW.insert(newBody);
-            }
-            else if (SW.contains(newBody)) {
-                SW.insert(newBody);
+            if (newBody.x > centerX) {
+                if (newBody.y > centerY) {
+                    NE.insert(newBody);
+                } else {
+                    SE.insert(newBody);
+                }
+            } else {
+                if (newBody.y > centerY) {
+                    NW.insert(newBody);
+                } else {
+                    SW.insert(newBody);
+                }
             }
         }
     }
 
     public void updateForce(Body newBody) {
-        if (this.body != null || this.body.equals(newBody)) 
+        if (this.body == null) {
             return;
+        }
         if (isExternal()) {
-            
+            if (this.body.equals(newBody))
+                return;
             double dx = this.body.x - newBody.x;
             double dy = this.body.y - newBody.y;
             double distance = distance(dx, dy);
             double F = G * this.body.mass * newBody.mass / (distance * distance);
             newBody.addForce(F * dx / distance, F * dy / distance);
-            
-        } else if (radius / distance(newBody) < theta) {
-
-            double dx = totalCenterOfMassX / totalMass - newBody.x;
-            double dy = totalCenterOfMassY / totalMass - newBody.y;
+        } else if (this.width / distance(this.body, newBody) < theta) {
+            double dx = this.totalCenterOfMassX / this.totalMass - newBody.x;
+            double dy = this.totalCenterOfMassY / this.totalMass - newBody.y;
             double distance = distance(dx, dy);
-            double F = G * totalMass * newBody.mass / (distance * distance);
+            double F = G * this.totalMass * newBody.mass / (distance * distance);
             newBody.addForce(F * dx / distance, F * dy / distance);
-
         } else {
-            if (NW != null) {
+            if (NW != null)
                 NW.updateForce(newBody);
-            }
-            if (SW != null) {
+            if (SW != null)
                 SW.updateForce(newBody);
-            }
-            if (SE != null) {
+            if (SE != null)
                 SE.updateForce(newBody);
-            }
-            if (NE != null) {
+            if (NE != null)
                 NE.updateForce(newBody);
-            }
         }
     }
 
@@ -106,15 +99,12 @@ public class BarnesHutTree {
         return NW == null && NE == null && SW == null && SE == null;
     }
 
-    private boolean contains(Body body) {
-        return body.x <= centerX + radius && body.x >= centerX - radius && body.y <= centerY + radius && body.y >= centerY - radius;
-    }
-
-    private double distance(Body body) {
-        double dx = centerX - body.x;
-        double dy = centerY - body.y;
+    private double distance(Body bodyA, Body bodyB) {
+        double dx = bodyA.x - bodyB.x;
+        double dy = bodyA.y - bodyB.y;
         return distance(dx, dy);
     }
+
     private double distance(double dx, double dy) {
         return Math.sqrt((dx * dx) + (dy * dy));
     }
