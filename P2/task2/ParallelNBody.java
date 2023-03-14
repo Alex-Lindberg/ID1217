@@ -24,6 +24,7 @@
  */
 package task2;
 
+import util.Constants;
 import util.Util;
 import util.Util.*;
 
@@ -32,16 +33,15 @@ import java.util.concurrent.CyclicBarrier;
 
 public class ParallelNBody {
 
-    public static final double DOWNSCALING = 0.01;
-    public static final double G = 6.67e-2;
-    public static final double EARTH_MASS = 59.742 * DOWNSCALING;
-    public static final double SUN_MASS = EARTH_MASS * 3.3 * 1e6;
-    public static final double RADIUS = 10;
-    public static final double MIN_DIST = 5;
-    public static final double SOFTENING = 1e5;
-    public static final double DT = 0.1;
-    public static final double START_VEL = 0.0001;
-    public static final double MASS_VARIANCE = 0.2;
+    public static final double G = Constants.G;
+    public static final double EARTH_MASS = Constants.EARTH_MASS;
+    public static final double SUN_MASS = Constants.SUN_MASS;
+    public static final double RADIUS = Constants.RADIUS;
+    public static final double MIN_DIST = Constants.MIN_DIST;
+    public static final double SOFTENING = Constants.SOFTENING;
+    public static final double DT = Constants.DT;
+    public static final double START_VEL = Constants.START_VEL;
+    public static final double MASS_VARIANCE = Constants.MASS_VARIANCE;
 
     public final int gnumBodies;
     public final double massBody;
@@ -89,18 +89,20 @@ public class ParallelNBody {
 
         this.p[0] = new Point(0, 0);
         this.v[0] = new Point(0, 0);
-        this.m[0] = EARTH_MASS * 333.0;
+        this.m[0] = SUN_MASS;
 
         for (int i = 1; i < gnumBodies; i++) {
             // Random position
             this.p[i] = Point.getRandPos(this.p[0], RADIUS, MIN_DIST);
-            // Random velocity between [-velBound, velBound]
+
             // Velocity orthogonal to the direction vector from the sun to current body
             double vx = (this.p[0].x - this.p[i].x) * START_VEL;
             double vy = -(this.p[0].y - this.p[i].y) * START_VEL;
             this.v[i] = new Point(vx, vy);
+            
             // Mass with some varaince
-            this.m[i] = massBody * (1 + randInterval(-massVariance, massVariance));
+            this.m[i] = EARTH_MASS * (
+                1 + randInterval(-(MASS_VARIANCE * 1.1), MASS_VARIANCE));
         }
         for (int w = 0; w < numWorkers; w++) 
             for (int i = 0; i < gnumBodies; i++) 
@@ -114,7 +116,7 @@ public class ParallelNBody {
         for (int i = w; i < gnumBodies; i += PR) {
             for (int j = i + 1; j < gnumBodies; j++) {
                 distance = dist(p[i], p[j]);
-                magnitude = (G * m[i] * m[j]) / ((Math.pow(distance, 2) * SOFTENING));
+                magnitude = (G * m[i] * m[j]) / ((distance * distance + SOFTENING * SOFTENING));
                 direction = new Point(  p[j].x - p[i].x,
                                         p[j].y - p[i].y);
                 f[w][i].x += magnitude * direction.x / distance;

@@ -1,7 +1,9 @@
-package task4;
+package util;
 
 public class Body {
 
+    private final double G = Constants.G;
+    private final double SOFTENING = Constants.SOFTENING;
     private final double DT;
 
     public double x, y; // position
@@ -20,9 +22,20 @@ public class Body {
         this.DT = dt;
     }
 
-    public void addForce(double x, double y) {
-        this.ax += x;
-        this.ay += y;
+    public void addForce(double dx, double dy, double mass) {
+        double dist = Math.sqrt(dx * dx + dy * dy);
+        double F = (G * mass * mass) / (dist * dist + SOFTENING * SOFTENING);
+        ax += F * dx / dist;
+        ay += F * dy / dist;
+    }
+
+    public void addForce(Body b) {
+        double dx = b.x - x;
+        double dy = b.y - y;
+        double dist = Math.sqrt(dx * dx + dy * dy);
+        double F = (G * mass * b.mass) / (dist * dist + SOFTENING * SOFTENING);
+        ax += F * dx / dist;
+        ay += F * dy / dist;
     }
 
     public void move() {

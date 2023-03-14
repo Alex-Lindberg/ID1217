@@ -1,13 +1,14 @@
 package task4;
 
 import java.util.Random;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Semaphore;
+
+import util.Body;
+import util.Constants;
+import util.Util;
 
 public class BarnesHutSimulation {
 
-    public static final double DOWNSCALING = Constants.DOWNSCALING;
     public static final double EARTH_MASS = Constants.EARTH_MASS;
     public static final double SUN_MASS = Constants.SUN_MASS;
     public static final double RADIUS = Constants.RADIUS;
@@ -15,20 +16,20 @@ public class BarnesHutSimulation {
     public static final double START_VEL = Constants.START_VEL;
     public static final double MASS_VARIANCE = Constants.MASS_VARIANCE;
 
-    private boolean[] config;
+    // private boolean[] config;
 
     public final int gnumBodies;
     public final double theta;
     public final double DT;
 
     Body[] bodies;
-    static BarnesHutTree tree;
+    BarnesHutTree tree;
 
     public BarnesHutSimulation(int gnumBodies, double theta, double dt, boolean[] config) {
         this.gnumBodies = gnumBodies;
         this.theta = theta;
         this.DT = dt;
-        this.config = config;
+        // this.config = config;
 
         this.bodies = new Body[gnumBodies];
 
@@ -45,13 +46,12 @@ public class BarnesHutSimulation {
 
             double vx = (this.bodies[0].x - x) * START_VEL;
             double vy = -(this.bodies[0].y - y) * START_VEL;
-            double mass = EARTH_MASS * (1 + randInterval(
-                    -MASS_VARIANCE,
-                    MASS_VARIANCE)) * DOWNSCALING;
+            double mass = EARTH_MASS * (
+                    1 + randInterval(-MASS_VARIANCE * 1.1, MASS_VARIANCE));
             this.bodies[i] = new Body(x, y, vx, vy, mass, dt);
         }
 
-        tree = buildTree(this.bodies);
+        this.tree = buildTree(this.bodies);
     }
 
     public static double randInterval(double min, double max) {
@@ -83,7 +83,7 @@ public class BarnesHutSimulation {
         // Create the root node of the Barnes-Hut sub-tree
         double cx = (xMin + xMax) / 2;
         double cy = (yMin + yMax) / 2;
-        double width = Math.max(xMax - xMin, yMax - yMin);
+        double width = Math.max(xMax - xMin, yMax - yMin) + 0.1;
         BarnesHutTree root = new BarnesHutTree(cx, cy, width, this.theta);
 
         // Insert each body into the tree
@@ -114,66 +114,41 @@ public class BarnesHutSimulation {
 
     public Thread[] simulate(int numWorkers, int numSteps) {
         CyclicBarrier barrier = new CyclicBarrier(numWorkers);
-        CyclicBarrier exitBarrier = new CyclicBarrier(numWorkers, () -> {
+        CyclicBarrier cycleBarrier = new CyclicBarrier(numWorkers, () -> {
             currentStep++;
+            if(currentStep < numSteps) {
+                this.tree = buildTree(this.bodies);
+            }
         });
-        Semaphore criticalWork = new Semaphore(1);
 
         Thread[] workers = new Thread[numWorkers];
-        int span = Math.floorDiv(gnumBodies, numWorkers);
         for (int w = 0; w < numWorkers; w++) {
             int id = w;
             workers[id] = new Thread(() -> {
-                int timesBuiltTree = 0;
-                long t0, timeToBuild = 0, timeToUpdate = 0, timeToMove = 0;
-                long timeAtBarrierA = 0, timeAtBarrierB = 0;
-                long timeAtExitBarrier = 0;
                 try {
-                    int intervalEnd = (span * id) + span;
+                    // Partition bodies array into smaller chunks
+                    int chunkSize = gnumBodies / numWorkers;
+                    int start = chunkSize * id;
+                    int end = (id == numWorkers - 1) ? gnumBodies : chunkSize * (id + 1);
                     while (currentStep < numSteps) {
 
-                        // First to arrive builds the tree
-                        if (criticalWork.tryAcquire()) {
-                            t0 = System.nanoTime();
-                            tree = buildTree(bodies);
-                            timeToBuild += System.nanoTime() - t0;
-                            timesBuiltTree++;
-                            criticalWork.release();
-                        }
-                        t0 = System.nanoTime();
-                        barrier.await();
-                        timeAtBarrierA += t0  / numSteps;
-                        t0 = System.nanoTime();
 
-                        for (int i = (span * id); i < intervalEnd; i++) {
+                        // Update forces for the assigned chunk of bodies
+                        for (int i = start; i < end; i++) {
                             tree.updateForce(bodies[i]);
                         }
-                        timeToUpdate += System.nanoTime() - t0;
 
-                        t0 = System.nanoTime();
                         barrier.await();
-                        timeAtBarrierB += t0  / numSteps;
-                        t0 = System.nanoTime();
                         
-                        for (int i = (span * id); i < intervalEnd; i++) {
+                        for (int i = start; i < end; i++) {
                             bodies[i].move();
                         }
-                        timeToMove += System.nanoTime() - t0;
                         
-                        t0 = System.nanoTime();
-                        exitBarrier.await();
-                        timeAtExitBarrier += t0  / numSteps;
+                        cycleBarrier.await();
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                System.out.format("Worker: %d, %n   Build (n=%d):\t%,d,%n   update: \t\t%,d,%n   move: \t\t%,d%n%n",
-                        id, timesBuiltTree, timeToBuild, timeToUpdate, timeToMove);
-                timeToBuild /= Math.max(timesBuiltTree, 1);
-                timeToUpdate /= numSteps;
-                timeToMove /= numSteps;
-                System.out.format("WorkerAVGS: %d, %n   Build (n=%d):\t%,d,%n   update: \t\t%,d,%n   move: \t\t%,d%n   timeAtBarrierA: \t%,d,%n   timeAtBarrierB: \t%,d,%n   timeAtBarrierExit: \t%,d,%n%n",
-                        id, timesBuiltTree, timeToBuild, timeToUpdate, timeToMove, timeAtBarrierA, timeAtBarrierB, timeAtExitBarrier);
             });
 
             workers[w].start();
@@ -188,17 +163,17 @@ public class BarnesHutSimulation {
         final Double MAX_FAR = 2.0;
 
         int gnumBodies, numSteps, numWorkers;
-        int numResultsShown = 0;
+        int numResultsShown = 5;
         double startTime, endTime;
         double dt = 0.1;
-        double far = 1;
+        double far = 1.5;
 
         gnumBodies = (args.length > 0) && (Integer.parseInt(args[0]) < MAX_BODIES) ? Integer.parseInt(args[0])
                 : MAX_BODIES;
         numSteps = (args.length > 1) && (Integer.parseInt(args[1]) < MAX_STEPS) ? Integer.parseInt(args[1])
                 : MAX_STEPS;
         far = (args.length > 2) && (Double.parseDouble(args[2]) < MAX_FAR) ? Double.parseDouble(args[2])
-                : MAX_FAR;
+                : far;
         numWorkers = (args.length > 3) && (Integer.parseInt(args[3]) < MAX_WORKERS) ? Integer.parseInt(args[3])
                 : MAX_WORKERS;
 

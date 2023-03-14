@@ -3,6 +3,8 @@ package task3;
 import java.awt.*;
 import javax.swing.*;
 
+import util.Body;
+
 public class BarnesHutSimulationGUI extends JFrame {
 
     private BarnesHutSimulation sim;

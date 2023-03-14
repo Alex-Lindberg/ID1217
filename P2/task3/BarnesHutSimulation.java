@@ -2,9 +2,11 @@ package task3;
 
 import java.util.Random;
 
+import util.Body;
+import util.Util;
+
 public class BarnesHutSimulation {
 
-    public static final double DOWNSCALING = Constants.DOWNSCALING;
     public static final double EARTH_MASS = Constants.EARTH_MASS;
     public static final double SUN_MASS = Constants.SUN_MASS;
     public static final double RADIUS = Constants.RADIUS;
@@ -42,9 +44,8 @@ public class BarnesHutSimulation {
 
             double vx = (this.bodies[0].x - x) * START_VEL;
             double vy = -(this.bodies[0].y - y) * START_VEL;
-            double mass = EARTH_MASS * (1 + randInterval(
-                    -MASS_VARIANCE,
-                    MASS_VARIANCE)) * DOWNSCALING;
+            double mass = EARTH_MASS * (
+                    1 + randInterval(-(MASS_VARIANCE * 1.1), MASS_VARIANCE));
             this.bodies[i] = new Body(x, y, vx, vy, mass, dt);
         }
 
@@ -140,6 +141,7 @@ public class BarnesHutSimulation {
         final double MAX_FAR = 2.0;
 
         int gnumBodies, numSteps;
+        int numResultsShown = 5;
         double startTime, endTime;
         double dt = 0.1;
         double far = 1.5;
@@ -162,8 +164,8 @@ public class BarnesHutSimulation {
         } else {
 
             // Printing starting conditions
-            // System.out.println("\n- Initial Conditions -\n");
-            // Util.printArrays(sim.bodies, gnumBodies, 5);
+            System.out.println("\n- Initial Conditions -\n");
+            Util.printArrays(sim.bodies, gnumBodies, numResultsShown);
 
             startTime = System.nanoTime();
 
@@ -172,8 +174,8 @@ public class BarnesHutSimulation {
             endTime = System.nanoTime() - startTime;
 
             // Printing end result
-            // System.out.format("\n- After %d steps -%n%n", numSteps);
-            // Util.printArrays(sim.bodies, gnumBodies, 5);
+            System.out.format("\n- After %d steps -%n%n", numSteps);
+            Util.printArrays(sim.bodies, gnumBodies, numResultsShown);
 
             System.out.format("%n- Simulation executed in %.1f ms -%n", endTime * Math.pow(10, -6));
             System.out.println("---------------------------------");
