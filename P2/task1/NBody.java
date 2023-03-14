@@ -1,23 +1,23 @@
 /**
  * Nbody-Problem simulator
- * Sequential brute force version
+ * Sequential brute-force version
  * 
  * Time complexity: O(N^2)
  * 
  * Usage (from root):
  *  javac task1/Nbody.java
- *  java task1.Nbody.java [gnumBodies] [numSteps] [massOfBodies] [massVariance] [numResultsShown]
+ *  java task1.Nbody [gnumBodies] [numSteps] [numResultsShown]
  * 
  * where:
  *  gnumBodies: The number of bodies used in the simulation.
  *  numSteps: The number of steps/cycles.
- *  massOfBodies: The mass used for each body.
  *  numResultsShown: The number of results to be printed to stdout.
  * 
- * 400_000 steps roughly equates to 15 seconds execution time for 120 bodies
- * on my personal computer. (14887,8 ms median)
+ * 350_000 steps roughly equates to 12 seconds execution time for 120 bodies
+ * on my personal computer. (12587,8 ms median)
  * 
- * Some liberty was taken to make the results look nice when displayed as a figure.
+ * Some liberty when initializing the bodies was taken to make the 
+ * results look nice when displayed as a figure.
  * 
  *  @author Alex Lindberg
  * 
@@ -25,8 +25,8 @@
 package task1;
 
 import util.Constants;
+import util.Point;
 import util.Util;
-import util.Util.*;
 
 public class NBody {
 
@@ -81,10 +81,9 @@ public class NBody {
             double vy = -(this.p[0].y - this.p[i].y) * START_VEL;
             this.v[i] = new Point(vx, vy);
             this.f[i] = new Point(0, 0);
-            
+
             // Mass with some varaince
-            this.m[i] = EARTH_MASS * (
-                1 + randInterval(-(MASS_VARIANCE * 1.1), MASS_VARIANCE));
+            this.m[i] = EARTH_MASS * (1 + randInterval(-(MASS_VARIANCE * 1.1), MASS_VARIANCE));
         }
     }
 
@@ -96,8 +95,8 @@ public class NBody {
             for (int j = i + 1; j < gnumBodies; j++) {
                 distance = dist(p[i], p[j]);
                 magnitude = (G * m[i] * m[j]) / (distance * distance + SOFTENING * SOFTENING);
-                direction = new Point(  p[j].x - p[i].x,
-                                        p[j].y - p[i].y);
+                direction = new Point(p[j].x - p[i].x,
+                        p[j].y - p[i].y);
                 f[i].x += magnitude * direction.x / distance;
                 f[j].x -= magnitude * direction.x / distance;
                 f[i].y += magnitude * direction.y / distance;
@@ -108,12 +107,12 @@ public class NBody {
 
     public void moveBodies() {
         Point deltaV, deltaP;
-        
+
         for (int i = 0; i < gnumBodies; i++) {
-            deltaV = new Point( (f[i].x / m[i]) * DT, 
-                                (f[i].y / m[i]) * DT);
-            deltaP = new Point( (v[i].x + deltaV.x / 2) * DT,
-                                (v[i].y + deltaV.y / 2) * DT);
+            deltaV = new Point((f[i].x / m[i]) * DT,
+                    (f[i].y / m[i]) * DT);
+            deltaP = new Point((v[i].x + deltaV.x / 2) * DT,
+                    (v[i].y + deltaV.y / 2) * DT);
 
             v[i].x += deltaV.x;
             v[i].y += deltaV.y;

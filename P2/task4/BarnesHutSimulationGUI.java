@@ -3,14 +3,18 @@ package task4;
 import java.awt.*;
 import javax.swing.*;
 
+
 import util.Body;
+import util.Constants;
 
 public class BarnesHutSimulationGUI extends JFrame {
 
     private BarnesHutSimulation sim;
     private SimulationPanel simPanel;
     private Dimension screenSize;
-    private final int SCALING = 20;
+
+    // private final double POS_SCALING = Constants.POS_SCALING;
+    private final double MASS_SCALING = Constants.MASS_SCALING;
 
     private final boolean drawQuads, drawTotalMass;
 
@@ -41,9 +45,9 @@ public class BarnesHutSimulationGUI extends JFrame {
 
             // Draw each body as a small circle
             for (Body body : sim.bodies) {
-                int x = (int) (SCALING * body.x) + (screenSize.width / 2);
-                int y = (int) (SCALING * body.y) + (screenSize.height / 2);
-                int r = (int) Math.sqrt(body.mass) * 5;
+                int x = (int) (body.x) + (screenSize.width / 2);
+                int y = (int) (body.y) + (screenSize.height / 2);
+                int r = (int) (Math.sqrt(body.mass) * MASS_SCALING);
 
                 g2d.setColor(Color.BLACK);
                 g2d.drawOval(x - r, y - r, 2 * r, 2 * r);
@@ -57,9 +61,9 @@ public class BarnesHutSimulationGUI extends JFrame {
             }
 
             if (drawQuads) {
-                int x = (int) (SCALING * (tree.centerX - (tree.width / 2))) + (screenSize.width / 2);
-                int y = (int) (SCALING * (tree.centerY - (tree.width / 2))) + (screenSize.height / 2);
-                int r = (int) (SCALING * (tree.width / 2));
+                int x = (int) (tree.centerX - (tree.width / 2)) + (screenSize.width / 2);
+                int y = (int) (tree.centerY - (tree.width / 2)) + (screenSize.height / 2);
+                int r = (int) (tree.width / 2);
 
                 g2d.setColor(Color.RED);
                 g2d.drawRect(x, y, 2 * r, 2 * r);

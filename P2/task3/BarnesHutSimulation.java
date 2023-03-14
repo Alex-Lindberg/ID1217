@@ -1,8 +1,31 @@
+/**
+ * Nbody-Problem simulator
+ * Sequential Barnes-Hut version
+ * 
+ * Time complexity: O(Nlog(N))
+ *  
+ * Usage (from root):
+ *  javac task3/BarnesHutSimulation.java
+ *  java task1.Nbody.java [gnumBodies] [numSteps] [numWorkers] [numResultsShown]
+ * 
+ * where:
+ *  gnumBodies: The number of bodies used in the simulation.
+ *  numSteps: The number of steps/cycles.
+ *  numWorkers: The number of threads.
+ *  numResultsShown: The number of results to be printed to stdout.
+ * 
+ * Some liberty when initializing the bodies was taken to make the 
+ * results look nice when displayed as a figure.
+ * 
+ *  @author Alex Lindberg
+ * 
+ */
 package task3;
 
 import java.util.Random;
 
 import util.Body;
+import util.Constants;
 import util.Util;
 
 public class BarnesHutSimulation {
@@ -13,26 +36,25 @@ public class BarnesHutSimulation {
     public static final double MIN_DIST = Constants.MIN_DIST;
     public static final double START_VEL = Constants.START_VEL;
     public static final double MASS_VARIANCE = Constants.MASS_VARIANCE;
+    public static final double DT = Constants.DT;
 
     private boolean[] config;
 
     public final int gnumBodies;
     public final double theta;
-    public final double DT;
 
     Body[] bodies;
     BarnesHutTree tree;
 
-    public BarnesHutSimulation(int gnumBodies, double theta, double dt, boolean[] config) {
+    public BarnesHutSimulation(int gnumBodies, double theta, boolean[] config) {
         this.gnumBodies = gnumBodies;
         this.theta = theta;
-        this.DT = dt;
         this.config = config;
 
         this.bodies = new Body[gnumBodies];
 
         // The "Sun"
-        this.bodies[0] = new Body(0, 0, 0, 0, SUN_MASS, dt);
+        this.bodies[0] = new Body(0, 0, 0, 0, SUN_MASS, DT);
 
         Random rand = new Random();
         for (int i = 1; i < gnumBodies; i++) {
@@ -44,9 +66,8 @@ public class BarnesHutSimulation {
 
             double vx = (this.bodies[0].x - x) * START_VEL;
             double vy = -(this.bodies[0].y - y) * START_VEL;
-            double mass = EARTH_MASS * (
-                    1 + randInterval(-(MASS_VARIANCE * 1.1), MASS_VARIANCE));
-            this.bodies[i] = new Body(x, y, vx, vy, mass, dt);
+            double mass = EARTH_MASS * (1 + randInterval(-(MASS_VARIANCE * 1.1), MASS_VARIANCE));
+            this.bodies[i] = new Body(x, y, vx, vy, mass, DT);
         }
 
         this.tree = buildTree(this.bodies);
@@ -143,29 +164,29 @@ public class BarnesHutSimulation {
         int gnumBodies, numSteps;
         int numResultsShown = 5;
         double startTime, endTime;
-        double dt = 0.1;
         double far = 1.5;
 
         gnumBodies = (args.length > 0) && (Integer.parseInt(args[0]) < MAX_BODIES) ? Integer.parseInt(args[0])
                 : MAX_BODIES;
         numSteps = (args.length > 1) && (Integer.parseInt(args[1]) < MAX_STEPS) ? Integer.parseInt(args[1])
                 : MAX_STEPS;
-        far = (args.length > 2) && (Double.parseDouble(args[2]) < MAX_STEPS) ? Double.parseDouble(args[2])
-                : MAX_FAR;
+        far = (args.length > 2) && (Double.parseDouble(args[2]) < MAX_FAR) ? Double.parseDouble(args[2])
+                : far;
+        numResultsShown = (args.length > 3) && (Integer.parseInt(args[3]) < gnumBodies) ? Integer.parseInt(args[3])
+                : numResultsShown;
 
-        boolean showQuads = true;
+        boolean showQuads = false;
         boolean showCenterOfMass = false;
         boolean[] config = new boolean[] { showQuads, showCenterOfMass };
 
-        BarnesHutSimulation sim = new BarnesHutSimulation(gnumBodies, far, dt, config);
+        BarnesHutSimulation sim = new BarnesHutSimulation(gnumBodies, far, config);
 
+        // Printing starting conditions
+        System.out.println("\n- Initial Conditions -\n");
+        Util.printArrays(sim.bodies, gnumBodies, numResultsShown);
         if (numSteps <= 0) {
             sim.run(true);
         } else {
-
-            // Printing starting conditions
-            System.out.println("\n- Initial Conditions -\n");
-            Util.printArrays(sim.bodies, gnumBodies, numResultsShown);
 
             startTime = System.nanoTime();
 
@@ -179,10 +200,8 @@ public class BarnesHutSimulation {
 
             System.out.format("%n- Simulation executed in %.1f ms -%n", endTime * Math.pow(10, -6));
             System.out.println("---------------------------------");
-            // System.out.format("%d  & %.1f \\\\ %n", gnumBodies, endTime * Math.pow(10, -9));
+            // System.out.format("%d & %.1f \\\\ %n", gnumBodies, endTime * Math.pow(10,
+            // -9));
         }
-        // Print the final positions of the bodies
-
     }
-
 }

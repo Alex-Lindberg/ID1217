@@ -15,26 +15,26 @@ public class BarnesHutSimulation {
     public static final double MIN_DIST = Constants.MIN_DIST;
     public static final double START_VEL = Constants.START_VEL;
     public static final double MASS_VARIANCE = Constants.MASS_VARIANCE;
+    public static final double DT = Constants.DT;
 
     // private boolean[] config;
 
     public final int gnumBodies;
     public final double theta;
-    public final double DT;
 
     Body[] bodies;
     BarnesHutTree tree;
+    public static int currentStep = 0;
 
-    public BarnesHutSimulation(int gnumBodies, double theta, double dt, boolean[] config) {
+    public BarnesHutSimulation(int gnumBodies, double theta, boolean[] config) {
         this.gnumBodies = gnumBodies;
         this.theta = theta;
-        this.DT = dt;
         // this.config = config;
 
         this.bodies = new Body[gnumBodies];
 
         // The "Sun"
-        this.bodies[0] = new Body(0, 0, 0, 0, SUN_MASS, dt);
+        this.bodies[0] = new Body(0, 0, 0, 0, SUN_MASS, DT);
 
         Random rand = new Random();
         for (int i = 1; i < gnumBodies; i++) {
@@ -46,12 +46,9 @@ public class BarnesHutSimulation {
 
             double vx = (this.bodies[0].x - x) * START_VEL;
             double vy = -(this.bodies[0].y - y) * START_VEL;
-            double mass = EARTH_MASS * (
-                    1 + randInterval(-MASS_VARIANCE * 1.1, MASS_VARIANCE));
-            this.bodies[i] = new Body(x, y, vx, vy, mass, dt);
+            double mass = EARTH_MASS * (1 + randInterval(-MASS_VARIANCE * 1.1, MASS_VARIANCE));
+            this.bodies[i] = new Body(x, y, vx, vy, mass, DT);
         }
-
-        this.tree = buildTree(this.bodies);
     }
 
     public static double randInterval(double min, double max) {
@@ -94,32 +91,17 @@ public class BarnesHutSimulation {
         return root;
     }
 
-    // public void run(boolean shouldRun) {
-    // boolean showQuads = config[0];
-    // boolean showCenterOfMass = config[1];
-    // BarnesHutSimulationGUI GUI = new BarnesHutSimulationGUI(this, showQuads,
-    // showCenterOfMass);
-    // while (shouldRun) {
-    // this.tree = buildTree(bodies);
-    // for (Body b : bodies)
-    // this.tree.updateForce(b);
-    // for (Body b : bodies)
-    // b.move();
-    // if (shouldRun)
-    // GUI.repaint();
-    // }
-    // }
-
-    public static int currentStep = 0;
-
     public Thread[] simulate(int numWorkers, int numSteps) {
         CyclicBarrier barrier = new CyclicBarrier(numWorkers);
         CyclicBarrier cycleBarrier = new CyclicBarrier(numWorkers, () -> {
             currentStep++;
-            if(currentStep < numSteps) {
+            // Last to reach barrier re-builds the tree
+            if (currentStep < numSteps) {
                 this.tree = buildTree(this.bodies);
             }
         });
+
+        this.tree = buildTree(this.bodies);
 
         Thread[] workers = new Thread[numWorkers];
         for (int w = 0; w < numWorkers; w++) {
@@ -132,18 +114,17 @@ public class BarnesHutSimulation {
                     int end = (id == numWorkers - 1) ? gnumBodies : chunkSize * (id + 1);
                     while (currentStep < numSteps) {
 
-
                         // Update forces for the assigned chunk of bodies
                         for (int i = start; i < end; i++) {
                             tree.updateForce(bodies[i]);
                         }
 
                         barrier.await();
-                        
+
                         for (int i = start; i < end; i++) {
                             bodies[i].move();
                         }
-                        
+
                         cycleBarrier.await();
                     }
                 } catch (Exception e) {
@@ -159,15 +140,15 @@ public class BarnesHutSimulation {
     public static void main(String[] args) throws Exception {
         final int MAX_BODIES = 240;
         final int MAX_STEPS = 350000;
-        final int MAX_WORKERS = 4;
+        final int MAX_WORKERS = 6;
         final Double MAX_FAR = 2.0;
 
         int gnumBodies, numSteps, numWorkers;
         int numResultsShown = 5;
         double startTime, endTime;
-        double dt = 0.1;
         double far = 1.5;
 
+        /* Parameters */
         gnumBodies = (args.length > 0) && (Integer.parseInt(args[0]) < MAX_BODIES) ? Integer.parseInt(args[0])
                 : MAX_BODIES;
         numSteps = (args.length > 1) && (Integer.parseInt(args[1]) < MAX_STEPS) ? Integer.parseInt(args[1])
@@ -176,36 +157,40 @@ public class BarnesHutSimulation {
                 : far;
         numWorkers = (args.length > 3) && (Integer.parseInt(args[3]) < MAX_WORKERS) ? Integer.parseInt(args[3])
                 : MAX_WORKERS;
+        numResultsShown = (args.length > 4) && (Integer.parseInt(args[4]) < gnumBodies) ? Integer.parseInt(args[4])
+                : numResultsShown;
 
+        
         boolean showQuads = true;
         boolean showCenterOfMass = false;
         boolean[] config = new boolean[] { showQuads, showCenterOfMass };
 
-        BarnesHutSimulation sim = new BarnesHutSimulation(gnumBodies, far, dt, config);
+        /* Program start */
+
+        BarnesHutSimulation sim = new BarnesHutSimulation(gnumBodies, far, config);
         Thread[] workers = new Thread[numWorkers];
 
-        if(numResultsShown > 0) {
+        if (numResultsShown > 0) {
             System.out.println("\n- Initial Conditions -\n");
             Util.printArrays(sim.bodies, gnumBodies, numResultsShown);
         }
-        
+
         startTime = System.nanoTime();
         
+        /* Creating the threads */
         workers = sim.simulate(numWorkers, numSteps);
         for (Thread thread : workers) {
             thread.join();
         }
-        
         endTime = System.nanoTime() - startTime;
-        
-        if(numResultsShown > 0) {
+
+        if (numResultsShown > 0) {
             System.out.format("\n- After %d steps -%n%n", numSteps);
             Util.printArrays(sim.bodies, gnumBodies, numResultsShown);
         }
 
         System.out.format("%n- Simulation executed in %.1f ms -%n", endTime * Math.pow(10, -6));
         System.out.println("---------------------------------");
-        // System.out.format("%d  & %.1f \\\\ %n", gnumBodies, endTime * Math.pow(10, -9));
-
+        // System.out.format("%d & %.1f \\\\ %n", gnumBodies, endTime * Math.pow(10,-9));
     }
 }
