@@ -30,7 +30,7 @@ import util.Util.*;
 public class NBody {
 
     public static final double DOWNSCALING = 0.01;
-    public static final double G = 6.67e-3;
+    public static final double G = 6.67e-2;
     public static final double EARTH_MASS = 59.742 * DOWNSCALING;
     public static final double SUN_MASS = EARTH_MASS * 3.3 * 1e6;
     public static final double RADIUS = 10;
@@ -95,7 +95,7 @@ public class NBody {
         for (int i = 0; i < gnumBodies - 1; i++) {
             for (int j = i + 1; j < gnumBodies; j++) {
                 distance = dist(p[i], p[j]);
-                magnitude = (G * m[i] * m[j]) / (Math.pow(distance, 2)); // + SOFTENING);
+                magnitude = (G * m[i] * m[j]) / (Math.pow(distance, 2) * SOFTENING);
                 direction = new Point(  p[j].x - p[i].x,
                                         p[j].y - p[i].y);
                 f[i].x += magnitude * direction.x / distance;
@@ -172,5 +172,6 @@ public class NBody {
 
         System.out.format("%n- Simulation executed in %.1f ms -%n", endTime * Math.pow(10, -6));
         System.out.println("---------------------------------");
+        System.out.format("%d  & %.1f \\\\ %n", gnumBodies, endTime * Math.pow(10, -9));
     }
 }
