@@ -17,10 +17,10 @@ public class BarnesHutSimulation {
     public final int gnumBodies;
     public final double theta;
     public final double DT;
-    
+
     Body[] bodies;
     BarnesHutTree tree;
-    
+
     public BarnesHutSimulation(int gnumBodies, double theta, double dt, boolean[] config) {
         this.gnumBodies = gnumBodies;
         this.theta = theta;
@@ -43,8 +43,8 @@ public class BarnesHutSimulation {
             double vx = (this.bodies[0].x - x) * START_VEL;
             double vy = -(this.bodies[0].y - y) * START_VEL;
             double mass = EARTH_MASS * (1 + randInterval(
-                -MASS_VARIANCE, 
-                MASS_VARIANCE)) * DOWNSCALING;
+                    -MASS_VARIANCE,
+                    MASS_VARIANCE)) * DOWNSCALING;
             this.bodies[i] = new Body(x, y, vx, vy, mass, dt);
         }
 
@@ -92,63 +92,92 @@ public class BarnesHutSimulation {
     }
 
     public void run(int numSteps) {
+        long t0, timeToBuild = 0, timeToUpdate = 0, timeToMove = 0;
         for (int i = 0; i < numSteps; i++) {
+            t0 = System.nanoTime();
             this.tree = buildTree(bodies);
-            for (Body b : bodies)
+            timeToBuild += System.nanoTime() - t0;
+
+            t0 = System.nanoTime();
+            for (Body b : bodies) {
                 this.tree.updateForce(b);
-            for (Body b : bodies)
+            }
+            timeToUpdate += System.nanoTime() - t0;
+
+            t0 = System.nanoTime();
+            for (Body b : bodies) {
                 b.move();
+            }
+            timeToMove += System.nanoTime() - t0;
         }
+        System.out.format("Sequential:%n   Build (n=%d):\t%,d,%n   update: \t\t%,d,%n   move: \t\t%,d%n%n",
+                numSteps, timeToBuild, timeToUpdate, timeToMove);
+        timeToBuild /= numSteps;
+        timeToUpdate /= numSteps;
+        timeToMove /= numSteps;
+        System.out.format("Sequential AVGs:%n   Build (n=%d):\t%,d,%n   update: \t\t%,d,%n   move: \t\t%,d%n%n",
+                numSteps, timeToBuild, timeToUpdate, timeToMove);
     }
+
     public void run(boolean shouldRun) {
         boolean showQuads = config[0];
         boolean showCenterOfMass = config[1];
         BarnesHutSimulationGUI GUI = new BarnesHutSimulationGUI(this, showQuads, showCenterOfMass);
-        while(shouldRun) {
+        while (shouldRun) {
             this.tree = buildTree(bodies);
             for (Body b : bodies)
                 this.tree.updateForce(b);
             for (Body b : bodies)
                 b.move();
-            if(shouldRun)
+            if (shouldRun)
                 GUI.repaint();
         }
     }
 
     public static void main(String[] args) {
-        int gnumBodies = 240;
+        final int MAX_BODIES = 240;
+        final int MAX_STEPS = 350000;
+        final double MAX_FAR = 2.0;
+
+        int gnumBodies, numSteps;
         double startTime, endTime;
-        int numSteps = 400000;
         double dt = 0.1;
-        double far = 0.5;
+        double far = 1.5;
+
+        gnumBodies = (args.length > 0) && (Integer.parseInt(args[0]) < MAX_BODIES) ? Integer.parseInt(args[0])
+                : MAX_BODIES;
+        numSteps = (args.length > 1) && (Integer.parseInt(args[1]) < MAX_STEPS) ? Integer.parseInt(args[1])
+                : MAX_STEPS;
+        far = (args.length > 2) && (Double.parseDouble(args[2]) < MAX_STEPS) ? Double.parseDouble(args[2])
+                : MAX_FAR;
 
         boolean showQuads = true;
         boolean showCenterOfMass = false;
-        boolean[] config = new boolean[]{showQuads, showCenterOfMass};
+        boolean[] config = new boolean[] { showQuads, showCenterOfMass };
 
         BarnesHutSimulation sim = new BarnesHutSimulation(gnumBodies, far, dt, config);
-        
 
         if (numSteps <= 0) {
             sim.run(true);
         } else {
 
             // Printing starting conditions
-            System.out.println("\n- Initial Conditions -\n");
-            Util.printArrays(sim.bodies, gnumBodies, numSteps);
+            // System.out.println("\n- Initial Conditions -\n");
+            // Util.printArrays(sim.bodies, gnumBodies, 5);
 
             startTime = System.nanoTime();
-            
+
             sim.run(numSteps);
 
             endTime = System.nanoTime() - startTime;
 
             // Printing end result
-            System.out.format("\n- After %d steps -%n%n", numSteps);
-            Util.printArrays(sim.bodies, gnumBodies, numSteps);
+            // System.out.format("\n- After %d steps -%n%n", numSteps);
+            // Util.printArrays(sim.bodies, gnumBodies, 5);
 
             System.out.format("%n- Simulation executed in %.1f ms -%n", endTime * Math.pow(10, -6));
             System.out.println("---------------------------------");
+            // System.out.format("%d  & %.1f \\\\ %n", gnumBodies, endTime * Math.pow(10, -9));
         }
         // Print the final positions of the bodies
 
