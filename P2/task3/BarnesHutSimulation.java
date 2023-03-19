@@ -38,36 +38,36 @@ public class BarnesHutSimulation {
     public static final double MASS_VARIANCE = Constants.MASS_VARIANCE;
     public static final double DT = Constants.DT;
 
-    private boolean[] config;
-
     public final int gnumBodies;
     public final double theta;
 
     Body[] bodies;
     BarnesHutTree tree;
 
-    public BarnesHutSimulation(int gnumBodies, double theta, boolean[] config) {
+    public BarnesHutSimulation(int gnumBodies, double theta) {
         this.gnumBodies = gnumBodies;
         this.theta = theta;
-        this.config = config;
 
         this.bodies = new Body[gnumBodies];
 
         // The "Sun"
-        this.bodies[0] = new Body(0, 0, 0, 0, SUN_MASS, DT);
+        double r, x1, x2, y1, y2, d, a, vx, vy, mass, theta0;
+        x1 = 0;
+        y1 = 0;
+        this.bodies[0] = new Body(x1, y1, 0, 0, SUN_MASS, DT);
 
         Random rand = new Random();
         for (int i = 1; i < gnumBodies; i++) {
-
-            double r = RADIUS * Math.sqrt(rand.nextDouble()) + MIN_DIST; // distance
-            double theta0 = rand.nextDouble() * 2 * Math.PI; // direction
-            double x = bodies[0].x + r * Math.cos(theta0); // cartesian pos x
-            double y = bodies[0].y + r * Math.sin(theta0); // cartesian pos y
-
-            double vx = (this.bodies[0].x - x) * START_VEL;
-            double vy = -(this.bodies[0].y - y) * START_VEL;
-            double mass = EARTH_MASS * (1 + randInterval(-(MASS_VARIANCE * 1.1), MASS_VARIANCE));
-            this.bodies[i] = new Body(x, y, vx, vy, mass, DT);
+            r = (RADIUS - MIN_DIST) * rand.nextDouble() + MIN_DIST; // distance
+            theta0 = rand.nextDouble() * 2 * Math.PI; // direction
+            x2 = x1 + r * Math.sin(theta0); // cartesian pos x
+            y2 = y1 + r * Math.cos(theta0); // cartesian pos y
+            d = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            a = Math.atan2(y2 - y1, x2 - x1);
+            vx = START_VEL * d * Math.sin(a);
+            vy = -START_VEL * d * Math.cos(a);
+            mass = EARTH_MASS * Math.max((1 + randInterval(-MASS_VARIANCE, MASS_VARIANCE)), 0.01);
+            this.bodies[i] = new Body(x2, y2, vx, vy, mass, DT);
         }
 
         this.tree = buildTree(this.bodies);
@@ -113,9 +113,32 @@ public class BarnesHutSimulation {
         return root;
     }
 
-    public void run(int numSteps) {
+    private boolean shouldRerender = false;
+    private boolean running = true;
+
+    public void run(boolean[] config) throws InterruptedException {
+        run(-1, config);
+    }
+
+    public void run(int numSteps, boolean[] config) throws InterruptedException {
         long t0, timeToBuild = 0, timeToUpdate = 0, timeToMove = 0;
-        for (int i = 0; i < numSteps; i++) {
+        Thread renderer = new Thread(() -> {
+            BarnesHutSimulationGUI g = new BarnesHutSimulationGUI(this, config[0], config[1]);
+            try {
+                while (running) {
+                    if (shouldRerender) {
+                        g.repaint();
+                        shouldRerender = false;
+                    }
+                    Thread.sleep(1);
+                }
+            } catch (Exception e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        renderer.start();
+
+        for (int i = 0; i < numSteps || numSteps == -1; i++) {
             t0 = System.nanoTime();
             this.tree = buildTree(bodies);
             timeToBuild += System.nanoTime() - t0;
@@ -131,7 +154,11 @@ public class BarnesHutSimulation {
                 b.move();
             }
             timeToMove += System.nanoTime() - t0;
+            shouldRerender = true;
         }
+        running = false;
+        if (renderer != null)
+            renderer.join();
         System.out.format("Sequential:%n   Build (n=%d):\t%,d,%n   update: \t\t%,d,%n   move: \t\t%,d%n%n",
                 numSteps, timeToBuild, timeToUpdate, timeToMove);
         timeToBuild /= numSteps;
@@ -141,22 +168,7 @@ public class BarnesHutSimulation {
                 numSteps, timeToBuild, timeToUpdate, timeToMove);
     }
 
-    public void run(boolean shouldRun) {
-        boolean showQuads = config[0];
-        boolean showCenterOfMass = config[1];
-        BarnesHutSimulationGUI GUI = new BarnesHutSimulationGUI(this, showQuads, showCenterOfMass);
-        while (shouldRun) {
-            this.tree = buildTree(bodies);
-            for (Body b : bodies)
-                this.tree.updateForce(b);
-            for (Body b : bodies)
-                b.move();
-            if (shouldRun)
-                GUI.repaint();
-        }
-    }
-
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         final int MAX_BODIES = 240;
         final int MAX_STEPS = 350000;
         final double MAX_FAR = 2.0;
@@ -175,22 +187,22 @@ public class BarnesHutSimulation {
         numResultsShown = (args.length > 3) && (Integer.parseInt(args[3]) < gnumBodies) ? Integer.parseInt(args[3])
                 : numResultsShown;
 
-        boolean showQuads = false;
-        boolean showCenterOfMass = false;
+        boolean showQuads = true;
+        boolean showCenterOfMass = true;
         boolean[] config = new boolean[] { showQuads, showCenterOfMass };
 
-        BarnesHutSimulation sim = new BarnesHutSimulation(gnumBodies, far, config);
+        BarnesHutSimulation sim = new BarnesHutSimulation(gnumBodies, far);
 
         // Printing starting conditions
         System.out.println("\n- Initial Conditions -\n");
         Util.printArrays(sim.bodies, gnumBodies, numResultsShown);
         if (numSteps <= 0) {
-            sim.run(true);
+            sim.run(config);
         } else {
 
             startTime = System.nanoTime();
 
-            sim.run(numSteps);
+            sim.run(numSteps, config);
 
             endTime = System.nanoTime() - startTime;
 

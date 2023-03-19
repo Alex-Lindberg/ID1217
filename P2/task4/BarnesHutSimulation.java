@@ -91,7 +91,7 @@ public class BarnesHutSimulation {
         return root;
     }
 
-    public Thread[] simulate(int numWorkers, int numSteps) {
+    public void simulate(Thread[] workers, int numWorkers, int numSteps) {
         CyclicBarrier barrier = new CyclicBarrier(numWorkers);
         CyclicBarrier cycleBarrier = new CyclicBarrier(numWorkers, () -> {
             currentStep++;
@@ -102,11 +102,9 @@ public class BarnesHutSimulation {
         });
 
         this.tree = buildTree(this.bodies);
-
-        Thread[] workers = new Thread[numWorkers];
         for (int w = 0; w < numWorkers; w++) {
             int id = w;
-            workers[id] = new Thread(() -> {
+            workers[w] = new Thread(() -> {
                 try {
                     // Partition bodies array into smaller chunks
                     int chunkSize = gnumBodies / numWorkers;
@@ -131,16 +129,14 @@ public class BarnesHutSimulation {
                     e.printStackTrace();
                 }
             });
-
             workers[w].start();
         }
-        return workers;
     }
 
     public static void main(String[] args) throws Exception {
-        final int MAX_BODIES = 240;
-        final int MAX_STEPS = 350000;
-        final int MAX_WORKERS = 6;
+        final int MAX_BODIES = 1000;
+        final int MAX_STEPS = 10000;
+        final int MAX_WORKERS = 4;
         final Double MAX_FAR = 2.0;
 
         int gnumBodies, numSteps, numWorkers;
@@ -160,7 +156,6 @@ public class BarnesHutSimulation {
         numResultsShown = (args.length > 4) && (Integer.parseInt(args[4]) < gnumBodies) ? Integer.parseInt(args[4])
                 : numResultsShown;
 
-        
         boolean showQuads = true;
         boolean showCenterOfMass = false;
         boolean[] config = new boolean[] { showQuads, showCenterOfMass };
@@ -176,9 +171,9 @@ public class BarnesHutSimulation {
         }
 
         startTime = System.nanoTime();
-        
+
         /* Creating the threads */
-        workers = sim.simulate(numWorkers, numSteps);
+        sim.simulate(workers, numWorkers, numSteps);
         for (Thread thread : workers) {
             thread.join();
         }
@@ -191,6 +186,7 @@ public class BarnesHutSimulation {
 
         System.out.format("%n- Simulation executed in %.1f ms -%n", endTime * Math.pow(10, -6));
         System.out.println("---------------------------------");
-        // System.out.format("%d & %.1f \\\\ %n", gnumBodies, endTime * Math.pow(10,-9));
+        // System.out.format("%d & %.1f \\\\ %n", gnumBodies, endTime *
+        // Math.pow(10,-9));
     }
 }
